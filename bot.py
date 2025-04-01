@@ -72,21 +72,30 @@ def write_to_excel(data, user_id):
 def create_docx(ariza_id, data, user_id, age, timestamp):
     doc = Document()
     doc.add_heading(f"Ariza №{ariza_id}", level=1)
-    fields = {
-        "Ariza ID": ariza_id,
-        "Telegram ID": user_id,
-        "Yosh": age,
-        "F.I.Sh": data["full_name"],
-        "Tug‘ilgan sana": data["birth_date"],
-        "Manzil": data["address"],
-        "Telefon": data["phone"],
-        "Yo‘nalish": data["topic"],
-        "Mazmuni": data["short_reason"],
-        "To‘liq matn": data["full_text"],
-        "Yuborilgan sana/vaqt": timestamp
+    doc.add_paragraph(f"🕓 Yaratilgan sana: {timestamp}\n👤 Telegram ID: {user_id}\nYosh: {age if age else 'Aniqlanmadi'}")
+
+    table = doc.add_table(rows=1, cols=2)
+    table.autofit = True
+    table.style = 'Table Grid'
+    hdr_cells = table.rows[0].cells
+    hdr_cells[0].text = 'Savol'
+    hdr_cells[1].text = 'Javob'
+
+    qna = {
+        "1. Familiyangiz, ismingiz va sharifingiz:": data["full_name"],
+        "2. Tug‘ilgan sana:": data["birth_date"],
+        "3. Yashash manzili:": data["address"],
+        "4. Telefon raqami:": data["phone"],
+        "5. Yo‘nalish:": data["topic"],
+        "6. Murojaat mazmuni:": data["short_reason"],
+        "7. Murojaat matni:": data["full_text"]
     }
-    for key, val in fields.items():
-        doc.add_paragraph(f"{key}: {val}")
+
+    for question, answer in qna.items():
+        row_cells = table.add_row().cells
+        row_cells[0].text = question
+        row_cells[1].text = answer
+
     filename = f"ariza_{ariza_id}.docx"
     doc.save(filename)
     return filename
@@ -94,12 +103,8 @@ def create_docx(ariza_id, data, user_id, age, timestamp):
 @dp.message(Command("start"))
 async def start_handler(message: types.Message, state: FSMContext):
     text = (
-        "🇺🇿 *O'zbekiston kasaba uyushmalari Federatsiyasi Toshkent viloyati Kengashi*"
-
-
-        "🤖 Murojaatlarni qabul qilish botiga xush kelibsiz!"
-
-
+        "🇺🇿 *O'zbekiston kasaba uyushmalari Federatsiyasi Toshkent viloyati Kengashi*\n\n"
+        "🤖 Murojaatlarni qabul qilish botiga xush kelibsiz!\n\n"
         "Marhamat, \"Murojaat yuborish\" tugmasini bosib murojaatingizni yo'llashingiz mumkin."
     )
     markup = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Murojaat yuborish")]], resize_keyboard=True)
@@ -107,25 +112,25 @@ async def start_handler(message: types.Message, state: FSMContext):
 
 @dp.message(lambda m: m.text == "Murojaat yuborish")
 async def trigger_murojaat(message: types.Message, state: FSMContext):
-    await message.answer("1. Familiyangiz, ismingiz va sharifingiz: (Masalan, Azizov Aziz Azizovich)", reply_markup=ReplyKeyboardRemove())
+    await message.answer("1. Familiyangiz, ismingiz va sharifingiz:\n(Masalan, Azizov Aziz Azizovich)", reply_markup=ReplyKeyboardRemove())
     await state.set_state(Form.full_name)
 
 @dp.message(Form.full_name)
 async def step_full_name(message: types.Message, state: FSMContext):
     await state.update_data(full_name=message.text)
-    await message.answer("2. Tug‘ilgan sana: (Masalan, 01.01.1991)")
+    await message.answer("2. Tug‘ilgan sana:\n(Masalan, 01.01.1991)")
     await state.set_state(Form.birth_date)
 
 @dp.message(Form.birth_date)
 async def step_birth(message: types.Message, state: FSMContext):
     await state.update_data(birth_date=message.text)
-    await message.answer("3. Yashash manzili: (Masalan, Toshkent viloyati, Nurafshon shahri...)")
+    await message.answer("3. Yashash manzili:\n(Masalan, Toshkent viloyati, Nurafshon shahri...)")
     await state.set_state(Form.address)
 
 @dp.message(Form.address)
 async def step_address(message: types.Message, state: FSMContext):
     await state.update_data(address=message.text)
-    await message.answer("4. Telefon raqamingiz: (Masalan, 90-123-45-67)")
+    await message.answer("4. Telefon raqamingiz:\n(Masalan, 90-123-45-67)")
     await state.set_state(Form.phone)
 
 @dp.message(Form.phone)
@@ -137,7 +142,7 @@ async def step_phone(message: types.Message, state: FSMContext):
 @dp.message(Form.topic)
 async def step_topic(message: types.Message, state: FSMContext):
     await state.update_data(topic=message.text)
-    await message.answer("6. Murojaat mazmuni: (Masalan, ishga tiklash...)")
+    await message.answer("6. Murojaat mazmuni:\n(Masalan, ishga tiklash...)")
     await state.set_state(Form.short_reason)
 
 @dp.message(Form.short_reason)
@@ -155,7 +160,7 @@ async def step_full_text(message: types.Message, state: FSMContext):
     doc_file = create_docx(ariza_id, data, message.from_user.id, age, timestamp)
 
     for admin in ADMIN_IDS:
-        await bot.send_message(admin, f" Yangi murojaat qabul qilindi: 👤 {data['full_name']} 📞 {data['phone']}")
+        await bot.send_message(admin, f"📩 Yangi murojaat qabul qilindi:\n\n👤 {data['full_name']}\n📞 {data['phone']}")
         await bot.send_document(admin, FSInputFile(doc_file), caption=f"📄 Ariza #{ariza_id}")
 
     os.remove(doc_file)
