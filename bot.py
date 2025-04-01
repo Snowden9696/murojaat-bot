@@ -164,7 +164,7 @@ async def step_full_text(message: types.Message, state: FSMContext):
         await bot.send_document(admin, FSInputFile(doc_file), caption=f"📄 Ariza #{ariza_id}")
 
     os.remove(doc_file)
-    await message.answer("✅ Murojaatingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.")
+    await message.answer("✅ Murojaatingiz qabul qilindi, tez orada sizga aloqaga chiqamiz!")
     await state.clear()
 
 async def main():
